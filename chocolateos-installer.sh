@@ -321,6 +321,10 @@ if [[ "$KERNEL" == "cachyos" ]]; then
 fi
 
 info "installing base packages..."
+# disable CheckSpace temporarily — live iso tmpfs has limited RAM
+# pacstrap installs to /mnt (real disk) so this is safe
+sed -i 's/^CheckSpace/#CheckSpace/' /etc/pacman.conf
+
 if [[ "$KERNEL" == "cachyos" ]]; then
     pacstrap -K /mnt base base-devel linux-firmware \
         networkmanager pipewire pipewire-pulse pipewire-alsa wireplumber \
@@ -332,6 +336,9 @@ else
         zsh git curl wget sudo nano \
         $KERNEL
 fi
+
+# re-enable CheckSpace
+sed -i 's/^#CheckSpace/CheckSpace/' /etc/pacman.conf
 
 success "base system installed"
 
@@ -463,6 +470,9 @@ step "installing ChocolateOS packages..."
 
 if confirm "install full ChocolateOS app suite now? (takes a while, can skip and run post-install script later)"; then
     arch-chroot /mnt bash -c "
+        # disable CheckSpace — avoids false disk space errors during install
+        sed -i 's/^CheckSpace/#CheckSpace/' /etc/pacman.conf
+
         pacman -S --noconfirm \
             niri waybar mako swaylock wlogout swaybg swww \
             rofi-wayland copyq grim slurp \
@@ -493,6 +503,9 @@ if confirm "install full ChocolateOS app suite now? (takes a while, can skip and
             bleachbit gparted hwinfo smartmontools \
             lm_sensors cpupower acpi \
             cava lolcat figlet foliate
+
+        # re-enable CheckSpace
+        sed -i 's/^#CheckSpace/CheckSpace/' /etc/pacman.conf
 
         # enable services
         systemctl enable bluetooth
