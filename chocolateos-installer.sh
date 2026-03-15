@@ -357,6 +357,11 @@ EOF
     # sync databases only
     pacman -Sy --noconfirm
 
+    # add x86_64_v3 architecture so pacman accepts cachyos v3 packages
+    if ! grep -q 'x86_64_v3' /etc/pacman.conf; then
+        sed -i '/^Architecture/s/auto/auto x86_64_v3/' /etc/pacman.conf
+    fi
+
     if ! pacman -Si linux-cachyos &>/dev/null; then
         warn "linux-cachyos still not found — cachyos entries in pacman.conf:"
         grep -A3 'cachyos' /etc/pacman.conf
@@ -370,6 +375,8 @@ info "installing base packages..."
 # pacstrap checks free space against live iso tmpfs (very limited RAM)
 # write a temp pacman.conf with CheckSpace disabled to work around this
 sed 's/^CheckSpace/#CheckSpace/' /etc/pacman.conf > /tmp/pacman-nocheckspace.conf
+# ensure x86_64_v3 arch is in the temp config for cachyos packages
+sed -i '/^Architecture/s/auto/auto x86_64_v3/' /tmp/pacman-nocheckspace.conf
 
 if [[ "$KERNEL" == "cachyos" ]]; then
     pacstrap -K -C /tmp/pacman-nocheckspace.conf /mnt base base-devel linux-firmware \
@@ -396,6 +403,10 @@ if [[ "$KERNEL" == "cachyos" ]]; then
     # append cachyos repos to installed system's pacman.conf
     grep -q '\[cachyos\]' /mnt/etc/pacman.conf || \
         grep '\[cachyos\]' /etc/pacman.conf >> /mnt/etc/pacman.conf || true
+    # add x86_64_v3 architecture to installed system
+    if ! grep -q 'x86_64_v3' /mnt/etc/pacman.conf; then
+        sed -i '/^Architecture/s/auto/auto x86_64_v3/' /mnt/etc/pacman.conf
+    fi
     success "cachyos repo config copied"
 fi
 
