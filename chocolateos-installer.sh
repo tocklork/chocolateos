@@ -316,34 +316,20 @@ if [[ "$KERNEL" == "cachyos" ]]; then
     curl -O https://mirror.cachyos.org/cachyos-repo.tar.xz
     tar xvf cachyos-repo.tar.xz
 
-    # find the actual extracted folder name
-    CACHYOS_DIR=$(tar -tf cachyos-repo.tar.xz 2>/dev/null | head -1 | cut -d/ -f1)
-    [[ -z "$CACHYOS_DIR" ]] && CACHYOS_DIR="cachyos-repo"
-    info "cachyos extracted to: $CACHYOS_DIR"
+    CACHYOS_DIR=$(find . -maxdepth 1 -type d -name 'cachyos*' | head -1)
+    cd "$CACHYOS_DIR"
 
-    # show what's inside so we can debug if needed
-    ls -la "$CACHYOS_DIR/"
+    # patch out any pacman -Syu in the shell script and awk files
+    # we only want the repo added, not a full live iso upgrade
+    sed -i \
+        's/pacman -Syu/: #pacman -Syu/g' \
+        cachyos-repo.sh
+    sed -i \
+        's/pacman --noconfirm -Syu/: #pacman -Syu/g' \
+        cachyos-repo.sh
 
-    # find and copy mirrorlist files wherever they are
-    find "$CACHYOS_DIR" -name 'cachyos-mirrorlist' -exec cp {} /etc/pacman.d/cachyos-mirrorlist \;
-    find "$CACHYOS_DIR" -name 'cachyos-v3-mirrorlist' -exec cp {} /etc/pacman.d/cachyos-v3-mirrorlist \; 2>/dev/null || true
-    find "$CACHYOS_DIR" -name 'cachyos-v4-mirrorlist' -exec cp {} /etc/pacman.d/cachyos-v4-mirrorlist \; 2>/dev/null || true
-
-    # add cachyos repos to pacman.conf if not already there
-    if ! grep -q '\[cachyos\]' /etc/pacman.conf; then
-        cat >> /etc/pacman.conf << 'EOF'
-
-[cachyos-v3]
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-
-[cachyos]
-Include = /etc/pacman.d/cachyos-mirrorlist
-EOF
-    fi
-
-    # import signing keys
-    find "$CACHYOS_DIR" -name '*.asc' -exec pacman-key --add {} \; 2>/dev/null || true
-    pacman-key --populate cachyos 2>/dev/null || true
+    bash cachyos-repo.sh
+    cd ..
 
     rm -rf "$CACHYOS_DIR" cachyos-repo.tar.xz
 
