@@ -341,8 +341,8 @@ if [[ "$KERNEL" == "cachyos" ]]; then
     pacman-key --init
     pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
     pacman-key --lsign-key F3B607488DB35A47
-    # set full trust level (6 = ultimate trust in gpg)
-    echo "F3B607488DB35A47:6:" | pacman-key --import-trustdb
+    # set ultimate trust via gpg ownertrust (5 = full, 6 = ultimate)
+    echo "882DCFE48E2051D48E2562ABF3B607488DB35A47:6:" | gpg --homedir /etc/pacman.d/gnupg --import-ownertrust
 
     # manually add direct server entries if gawk didn't add them
     if ! grep -q '\[cachyos\]' /etc/pacman.conf; then
