@@ -313,15 +313,21 @@ reflector --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
 
 if [[ "$KERNEL" == "cachyos" ]]; then
     info "setting up cachyos repo on live iso..."
-    # manually add cachyos repo instead of running their script
-    # their script does a pacman -Syu which fails on the live iso tmpfs
     curl -O https://mirror.cachyos.org/cachyos-repo.tar.xz
     tar xvf cachyos-repo.tar.xz
 
-    # copy mirrorlist files
-    cp cachyos-repo/cachyos-mirrorlist /etc/pacman.d/cachyos-mirrorlist
-    cp cachyos-repo/cachyos-v3-mirrorlist /etc/pacman.d/cachyos-v3-mirrorlist 2>/dev/null || true
-    cp cachyos-repo/cachyos-v4-mirrorlist /etc/pacman.d/cachyos-v4-mirrorlist 2>/dev/null || true
+    # find the actual extracted folder name
+    CACHYOS_DIR=$(tar -tf cachyos-repo.tar.xz 2>/dev/null | head -1 | cut -d/ -f1)
+    [[ -z "$CACHYOS_DIR" ]] && CACHYOS_DIR="cachyos-repo"
+    info "cachyos extracted to: $CACHYOS_DIR"
+
+    # show what's inside so we can debug if needed
+    ls -la "$CACHYOS_DIR/"
+
+    # find and copy mirrorlist files wherever they are
+    find "$CACHYOS_DIR" -name 'cachyos-mirrorlist' -exec cp {} /etc/pacman.d/cachyos-mirrorlist \;
+    find "$CACHYOS_DIR" -name 'cachyos-v3-mirrorlist' -exec cp {} /etc/pacman.d/cachyos-v3-mirrorlist \; 2>/dev/null || true
+    find "$CACHYOS_DIR" -name 'cachyos-v4-mirrorlist' -exec cp {} /etc/pacman.d/cachyos-v4-mirrorlist \; 2>/dev/null || true
 
     # add cachyos repos to pacman.conf if not already there
     if ! grep -q '\[cachyos\]' /etc/pacman.conf; then
@@ -335,13 +341,13 @@ Include = /etc/pacman.d/cachyos-mirrorlist
 EOF
     fi
 
-    # copy signing keys
-    cp -r cachyos-repo/keys/. /etc/pacman.d/gnupg/ 2>/dev/null || true
+    # import signing keys
+    find "$CACHYOS_DIR" -name '*.asc' -exec pacman-key --add {} \; 2>/dev/null || true
     pacman-key --populate cachyos 2>/dev/null || true
 
-    rm -rf cachyos-repo cachyos-repo.tar.xz
+    rm -rf "$CACHYOS_DIR" cachyos-repo.tar.xz
 
-    # just sync repo databases, no upgrade
+    # sync repo databases only, no upgrade
     pacman -Sy --noconfirm
     success "cachyos repo added"
 fi
