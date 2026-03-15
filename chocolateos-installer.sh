@@ -319,22 +319,28 @@ if [[ "$KERNEL" == "cachyos" ]]; then
     CACHYOS_DIR=$(find . -maxdepth 1 -type d -name 'cachyos*' | head -1)
     cd "$CACHYOS_DIR"
 
-    # patch out any pacman -Syu in the shell script and awk files
-    # we only want the repo added, not a full live iso upgrade
-    sed -i \
-        's/pacman -Syu/: #pacman -Syu/g' \
-        cachyos-repo.sh
-    sed -i \
-        's/pacman --noconfirm -Syu/: #pacman -Syu/g' \
-        cachyos-repo.sh
+    # patch out pacman -Syu so it doesn't try to upgrade the live iso
+    sed -i 's/pacman -Syu/: #pacman -Syu/g' cachyos-repo.sh
+    sed -i 's/pacman --noconfirm -Syu/: #pacman -Syu/g' cachyos-repo.sh
 
     bash cachyos-repo.sh
     cd ..
-
     rm -rf "$CACHYOS_DIR" cachyos-repo.tar.xz
 
-    # sync repo databases only, no upgrade
+    # import cachyos signing key explicitly
+    pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
+    pacman-key --lsign-key F3B607488DB35A47
+
+    # sync databases so linux-cachyos becomes visible
     pacman -Sy --noconfirm
+
+    # verify the package is now findable
+    if ! pacman -Si linux-cachyos &>/dev/null; then
+        warn "linux-cachyos still not found after repo setup — check pacman.conf:"
+        grep -A3 '\[cachyos\]' /etc/pacman.conf
+        error "cachyos repo setup failed, cannot continue"
+    fi
+
     success "cachyos repo added"
 fi
 
