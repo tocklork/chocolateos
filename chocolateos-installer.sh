@@ -313,13 +313,36 @@ reflector --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
 
 if [[ "$KERNEL" == "cachyos" ]]; then
     info "setting up cachyos repo on live iso..."
+    # manually add cachyos repo instead of running their script
+    # their script does a pacman -Syu which fails on the live iso tmpfs
     curl -O https://mirror.cachyos.org/cachyos-repo.tar.xz
-    tar xvf cachyos-repo.tar.xz && cd cachyos-repo
-    # run the script but skip the pacman -Syu it tries to do
-    # we only need the repo added, not a full live iso upgrade
-    sed -i 's/pacman -Syu/pacman -Sy/' cachyos-repo.sh
-    ./cachyos-repo.sh
-    cd .. && rm -rf cachyos-repo cachyos-repo.tar.xz
+    tar xvf cachyos-repo.tar.xz
+
+    # copy mirrorlist files
+    cp cachyos-repo/cachyos-mirrorlist /etc/pacman.d/cachyos-mirrorlist
+    cp cachyos-repo/cachyos-v3-mirrorlist /etc/pacman.d/cachyos-v3-mirrorlist 2>/dev/null || true
+    cp cachyos-repo/cachyos-v4-mirrorlist /etc/pacman.d/cachyos-v4-mirrorlist 2>/dev/null || true
+
+    # add cachyos repos to pacman.conf if not already there
+    if ! grep -q '\[cachyos\]' /etc/pacman.conf; then
+        cat >> /etc/pacman.conf << 'EOF'
+
+[cachyos-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+
+[cachyos]
+Include = /etc/pacman.d/cachyos-mirrorlist
+EOF
+    fi
+
+    # copy signing keys
+    cp -r cachyos-repo/keys/. /etc/pacman.d/gnupg/ 2>/dev/null || true
+    pacman-key --populate cachyos 2>/dev/null || true
+
+    rm -rf cachyos-repo cachyos-repo.tar.xz
+
+    # just sync repo databases, no upgrade
+    pacman -Sy --noconfirm
     success "cachyos repo added"
 fi
 
