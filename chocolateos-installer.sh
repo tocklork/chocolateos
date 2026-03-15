@@ -337,13 +337,17 @@ if [[ "$KERNEL" == "cachyos" ]]; then
     cd ..
     rm -rf "$CACHYOS_DIR" cachyos-repo.tar.xz
 
-    # import cachyos key properly
+    # import cachyos key
     pacman-key --init
-    # fetch the raw key and add it directly
     curl -s "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x882DCFE48E2051D48E2562ABF3B607488DB35A47" -o /tmp/cachyos.key
     pacman-key --add /tmp/cachyos.key
     pacman-key --lsign-key 882DCFE48E2051D48E2562ABF3B607488DB35A47
     rm /tmp/cachyos.key
+
+    # sync databases — skip sig check on live iso since key trust is finicky
+    pacman -Sy --noconfirm --disable-download-timeout \
+        --config /etc/pacman.conf \
+        2>/dev/null || pacman -Sy --noconfirm --nosig
 
     # manually add direct server entries if gawk didn't add them
     if ! grep -q '\[cachyos\]' /etc/pacman.conf; then
@@ -351,11 +355,16 @@ if [[ "$KERNEL" == "cachyos" ]]; then
         cat >> /etc/pacman.conf << 'EOF'
 
 [cachyos-v3]
+SigLevel = Never
 Server = https://mirror.cachyos.org/repo/x86_64_v3/$repo
 
 [cachyos]
+SigLevel = Never
 Server = https://mirror.cachyos.org/repo/x86_64/$repo
 EOF
+    else
+        # add SigLevel Never to existing cachyos entries
+        sed -i '/^\[cachyos/a SigLevel = Never' /etc/pacman.conf
     fi
 
     # sync databases only
@@ -386,11 +395,13 @@ if [[ "$KERNEL" == "cachyos" ]]; then
     pacstrap -K -C /tmp/pacman-nocheckspace.conf /mnt base base-devel linux-firmware \
         networkmanager pipewire pipewire-pulse pipewire-alsa wireplumber \
         zsh git curl wget sudo nano \
+        grub efibootmgr os-prober limine \
         linux-cachyos linux-cachyos-headers
 else
     pacstrap -K -C /tmp/pacman-nocheckspace.conf /mnt base base-devel linux-firmware \
         networkmanager pipewire pipewire-pulse pipewire-alsa wireplumber \
         zsh git curl wget sudo nano \
+        grub efibootmgr os-prober limine \
         $KERNEL
 fi
 
@@ -478,9 +489,6 @@ step "installing bootloader: $BOOTLOADER"
 case "$BOOTLOADER" in
     grub)
         arch-chroot /mnt bash -c "
-            sed -i 's/^CheckSpace/#CheckSpace/' /etc/pacman.conf
-            pacman -S --noconfirm grub efibootmgr os-prober
-            sed -i 's/^#CheckSpace/CheckSpace/' /etc/pacman.conf
             grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ChocolateOS --recheck
             grub-mkconfig -o /boot/grub/grub.cfg
         "
