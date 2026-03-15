@@ -337,9 +337,12 @@ if [[ "$KERNEL" == "cachyos" ]]; then
     cd ..
     rm -rf "$CACHYOS_DIR" cachyos-repo.tar.xz
 
-    # manually import the cachyos signing key
+    # import and fully trust the cachyos signing key
+    pacman-key --init
     pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
     pacman-key --lsign-key F3B607488DB35A47
+    # set full trust level (6 = ultimate trust in gpg)
+    echo "F3B607488DB35A47:6:" | pacman-key --import-trustdb
 
     # manually add direct server entries if gawk didn't add them
     if ! grep -q '\[cachyos\]' /etc/pacman.conf; then
@@ -474,8 +477,10 @@ step "installing bootloader: $BOOTLOADER"
 case "$BOOTLOADER" in
     grub)
         arch-chroot /mnt bash -c "
+            sed -i 's/^CheckSpace/#CheckSpace/' /etc/pacman.conf
             pacman -S --noconfirm grub efibootmgr os-prober
-            grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ChocolateOS
+            sed -i 's/^#CheckSpace/CheckSpace/' /etc/pacman.conf
+            grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ChocolateOS --recheck
             grub-mkconfig -o /boot/grub/grub.cfg
         "
         ;;
