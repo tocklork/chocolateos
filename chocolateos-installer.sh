@@ -337,12 +337,13 @@ if [[ "$KERNEL" == "cachyos" ]]; then
     cd ..
     rm -rf "$CACHYOS_DIR" cachyos-repo.tar.xz
 
-    # import and fully trust the cachyos signing key
+    # import cachyos key properly
     pacman-key --init
-    pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-    pacman-key --lsign-key F3B607488DB35A47
-    # set ultimate trust via gpg ownertrust (5 = full, 6 = ultimate)
-    echo "882DCFE48E2051D48E2562ABF3B607488DB35A47:6:" | gpg --homedir /etc/pacman.d/gnupg --import-ownertrust
+    # fetch the raw key and add it directly
+    curl -s "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x882DCFE48E2051D48E2562ABF3B607488DB35A47" -o /tmp/cachyos.key
+    pacman-key --add /tmp/cachyos.key
+    pacman-key --lsign-key 882DCFE48E2051D48E2562ABF3B607488DB35A47
+    rm /tmp/cachyos.key
 
     # manually add direct server entries if gawk didn't add them
     if ! grep -q '\[cachyos\]' /etc/pacman.conf; then
