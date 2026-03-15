@@ -319,25 +319,47 @@ if [[ "$KERNEL" == "cachyos" ]]; then
     CACHYOS_DIR=$(find . -maxdepth 1 -type d -name 'cachyos*' | head -1)
     cd "$CACHYOS_DIR"
 
-    # patch out pacman -Syu so it doesn't try to upgrade the live iso
-    sed -i 's/pacman -Syu/: #pacman -Syu/g' cachyos-repo.sh
-    sed -i 's/pacman --noconfirm -Syu/: #pacman -Syu/g' cachyos-repo.sh
+    # the script does:
+    # 1. pacman-key --recv-keys / --lsign-key  (fine)
+    # 2. pacman -U keyring + mirrorlist pkgs   (fails — no space on live iso tmpfs)
+    # 3. gawk to add repos to pacman.conf      (fine)
+    # 4. pacman -Syu at the end                (fails — same reason)
+    #
+    # we only need steps 1 and 3, so patch out 2 and 4
+
+    # skip the pacman -U block (mirrorlist/keyring package installs)
+    sed -i '/pacman -U/,/pacman-7.*pkg.tar.zst/d' cachyos-repo.sh
+
+    # skip the final pacman -Syu
+    sed -i 's/^\s*pacman -Syu/: #pacman -Syu/' cachyos-repo.sh
 
     bash cachyos-repo.sh
     cd ..
     rm -rf "$CACHYOS_DIR" cachyos-repo.tar.xz
 
-    # import cachyos signing key explicitly
+    # manually import the cachyos signing key
     pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
     pacman-key --lsign-key F3B607488DB35A47
 
-    # sync databases so linux-cachyos becomes visible
+    # manually add direct server entries if gawk didn't add them
+    if ! grep -q '\[cachyos\]' /etc/pacman.conf; then
+        info "manually adding cachyos repos to pacman.conf..."
+        cat >> /etc/pacman.conf << 'EOF'
+
+[cachyos-v3]
+Server = https://mirror.cachyos.org/repo/x86_64_v3/$repo
+
+[cachyos]
+Server = https://mirror.cachyos.org/repo/x86_64/$repo
+EOF
+    fi
+
+    # sync databases only
     pacman -Sy --noconfirm
 
-    # verify the package is now findable
     if ! pacman -Si linux-cachyos &>/dev/null; then
-        warn "linux-cachyos still not found after repo setup — check pacman.conf:"
-        grep -A3 '\[cachyos\]' /etc/pacman.conf
+        warn "linux-cachyos still not found — cachyos entries in pacman.conf:"
+        grep -A3 'cachyos' /etc/pacman.conf
         error "cachyos repo setup failed, cannot continue"
     fi
 
