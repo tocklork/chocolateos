@@ -1,12 +1,12 @@
 # 🍫 ChocolateOS
  
-A minimal, lightweight Arch Linux install script built for personal use — fast, clean, and opinionated...?????
+An opinionated Arch Linux install script — sets up a minimal, lightweight system the way I like it.
  
 ---
  
 ## Overview
  
-ChocolateOS is an Arch Linux-based distro using the **CachyOS kernel** for better desktop and gaming performance, and **niri** as the Wayland compositor. It's designed to be lean and get out of your way.
+ChocolateOS is NOT a fucking distribution. It's a fucking interactive installer script that sets up a vanilla Arch Linux system with a curated set of packages and configs. It uses the CachyOS kernel for better desktop and gaming performance, and niri as the Wayland compositor.
  
 - **Base:** Arch Linux
 - **Kernel:** CachyOS (BORE/EEVDF scheduler)
@@ -60,7 +60,7 @@ bash chocolateos-installer.sh
 | wlogout | Logout menu |
 | rofi-wayland | App launcher |
 | copyq | Clipboard manager |
-| swww | Wallpaper daemon |
+| awww | Wallpaper daemon |
 | xwayland-satellite | XWayland support |
  
 ### Apps
@@ -167,11 +167,10 @@ bash chocolateos-installer.sh
  
 | Option | Notes |
 |--------|-------|
-| **GRUB** | Most compatible and most common |
+| **GRUB** | Most compatible, most common |
 | **Limine** | Modern, fast, minimal config |
 | **systemd-boot** | Simple, built into systemd |
  
 ---
  
-> made with love by tocklork
- 
+> made with love by thomi
