@@ -315,6 +315,9 @@ if [[ "$KERNEL" == "cachyos" ]]; then
     info "setting up cachyos repo on live iso..."
     curl -O https://mirror.cachyos.org/cachyos-repo.tar.xz
     tar xvf cachyos-repo.tar.xz && cd cachyos-repo
+    # run the script but skip the pacman -Syu it tries to do
+    # we only need the repo added, not a full live iso upgrade
+    sed -i 's/pacman -Syu/pacman -Sy/' cachyos-repo.sh
     ./cachyos-repo.sh
     cd .. && rm -rf cachyos-repo cachyos-repo.tar.xz
     success "cachyos repo added"
