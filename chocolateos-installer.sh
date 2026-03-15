@@ -321,24 +321,23 @@ if [[ "$KERNEL" == "cachyos" ]]; then
 fi
 
 info "installing base packages..."
-# disable CheckSpace temporarily — live iso tmpfs has limited RAM
-# pacstrap installs to /mnt (real disk) so this is safe
-sed -i 's/^CheckSpace/#CheckSpace/' /etc/pacman.conf
+# pacstrap checks free space against live iso tmpfs (very limited RAM)
+# write a temp pacman.conf with CheckSpace disabled to work around this
+sed 's/^CheckSpace/#CheckSpace/' /etc/pacman.conf > /tmp/pacman-nocheckspace.conf
 
 if [[ "$KERNEL" == "cachyos" ]]; then
-    pacstrap -K /mnt base base-devel linux-firmware \
+    pacstrap -K -C /tmp/pacman-nocheckspace.conf /mnt base base-devel linux-firmware \
         networkmanager pipewire pipewire-pulse pipewire-alsa wireplumber \
         zsh git curl wget sudo nano \
         linux-cachyos linux-cachyos-headers
 else
-    pacstrap -K /mnt base base-devel linux-firmware \
+    pacstrap -K -C /tmp/pacman-nocheckspace.conf /mnt base base-devel linux-firmware \
         networkmanager pipewire pipewire-pulse pipewire-alsa wireplumber \
         zsh git curl wget sudo nano \
         $KERNEL
 fi
 
-# re-enable CheckSpace
-sed -i 's/^#CheckSpace/CheckSpace/' /etc/pacman.conf
+rm /tmp/pacman-nocheckspace.conf
 
 success "base system installed"
 
